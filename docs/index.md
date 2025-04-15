@@ -9,7 +9,7 @@
 
 ## Key Features
 
-- **Multiple Algorithms**: Includes both DDSketch and MomentSketch implementations
+- **Multiple Algorithms**: Includes DDSketch, MomentSketch and HDRHistogram implementations
 - **Memory Efficient**: Uses compact data structures regardless of data stream size
 - **Mergeable**: Supports distributed processing by merging sketches
 - **Accuracy Guarantees**: Provides configurable error bounds
@@ -27,6 +27,7 @@ examples.md
 api/index.md
 api/ddsketch.md
 api/momentsketch.md
+api/hdrhistogram.md
 contributing.md
 code.md
 ```

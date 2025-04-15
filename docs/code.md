@@ -4,10 +4,11 @@ This page provides links to the detailed API documentation for all components of
 
 ## Sketch Algorithms
 
-QuantileFlow provides two main algorithms for quantile estimation:
+QuantileFlow provides three main algorithms for quantile estimation:
 
 - [DDSketch](api/ddsketch.md) - Distributed and Deterministic Sketch with configurable relative error
 - [MomentSketch](api/momentsketch.md) - Moment-based quantile sketch using maximum entropy optimization
+- [HDRHistogram](api/hdrhistogram.md) - High Dynamic Range Histogram for tracking values across multiple orders of magnitude
 
 ## API Reference
 
