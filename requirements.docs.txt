@@ -10,3 +10,10 @@ sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
 myst-parser
 docutils
+
+numpy
+pandas
+pytest
+coverage
+scipy
+matplotlib
