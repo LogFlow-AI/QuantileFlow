@@ -20,11 +20,13 @@ accurate quantile estimates with minimal memory overhead.
 """
 from QuantileFlow.momentsketch.core import MomentSketch
 from QuantileFlow.hdrhistogram.core import HDRHistogram
+from QuantileFlow.ddsketch.core import DDSketch
 
 __version__ = "0.0.3"
 __all__ = [
     "MomentSketch",
     "HDRHistogram",
+    "DDSketch",
 ]
 
 if __name__ == "__main__":
