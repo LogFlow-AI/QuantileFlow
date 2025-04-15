@@ -3,10 +3,8 @@
 > This package provides API and functionality to efficiently compute quantiles for anomaly detection in service/system logs. Developed under LogFlow-AI initiative.
 
 [![Latest Version on PyPI](https://img.shields.io/pypi/v/QuantileFlow.svg)](https://pypi.python.org/pypi/QuantileFlow/)
-[![Supported Implementations](https://img.shields.io/pypi/pyversions/QuantileFlow.svg)](https://pypi.python.org/pypi/QuantileFlow/)
 ![Build Status](https://github.com/LogFlow-AI/QuantileFlow/actions/workflows/test.yaml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/QuantileFlow/badge/?version=latest)](https://QuantileFlow.readthedocs.io/en/latest/?badge=latest)
-[![Coverage Status](https://coveralls.io/repos/github/LogFlow-AI/QuantileFlow/badge.svg?branch=master)](https://coveralls.io/github/LogFlow-AI/QuantileFlow?branch=master)
 [![Built with PyPi Template](https://img.shields.io/badge/PyPi_Template-v0.8.0-blue.svg)](https://github.com/christophevg/pypi-template)
 
 ## Key Features
