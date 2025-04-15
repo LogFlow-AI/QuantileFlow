@@ -1,0 +1,24 @@
+a_description_for_the_package: This package provides API and functionality to efficiently
+  compute quantiles for anomaly detection in service/system logs. Developed under
+  LogFlow-AI initiative.
+classifiers: []
+console_scripts: []
+first_year_of_publication: '2025'
+github_account: LogFlow-AI
+github_repo_name: QuantileFlow
+keywords_describing_the_package: QuantileFlow
+license: Apache
+package_module_name: QuantileFlow
+package_name: QuantileFlow
+package_tagline: This package provides API and functionality to efficiently compute
+  quantiles for anomaly detection in service/system logs. Developed under LogFlow-AI
+  initiative.
+package_title: QuantileFlow
+readme: .github/README.md
+requires: []
+scripts: []
+version: 0.8.0
+your_author_name: Dhyey Dharmendrakumar Mavani
+your_email_address: ddmavani2003@gmail.com
+your_full_name: Dhyey Dharmendrakumar Mavani
+your_name: Dhyey Mavani
