@@ -18,10 +18,10 @@ The package includes three main implementations:
 All implementations are designed to handle high-throughput data streams and provide
 accurate quantile estimates with minimal memory overhead.
 """
-from .momentsketch.core import MomentSketch
-from .hdrhistogram.core import HDRHistogram
+from QuantileFlow.momentsketch.core import MomentSketch
+from QuantileFlow.hdrhistogram.core import HDRHistogram
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __all__ = [
     "MomentSketch",
     "HDRHistogram",
