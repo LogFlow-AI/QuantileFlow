@@ -56,7 +56,8 @@ for mapping, metrics in results.items():
 For datasets with outliers that span a wide range, sparse storage can be more appropriate:
 
 ```python
-from QuantileFlow import DDSketch, BucketManagementStrategy
+from QuantileFlow import DDSketch
+from QuantileFlow.ddsketch import BucketManagementStrategy
 import numpy as np
 
 # Generate data with outliers
@@ -182,7 +183,11 @@ fig = histogram.plot_distribution()
 
 ## Comparing All Three Algorithms
 
-Here's how to compare the performance and accuracy of all three algorithms:
+In the below code block, we show how to compare the performance and accuracy of all three algorithms. Note that HDRHistogram gives wildly inaccurate estimates because we're sampling from a log normal distribution (it's works perfectly if you just change the distribution to something with a smaller tail, such as log); we hypothesize this occurs because of two reasons: 
+
+(1) Moments (especially higher ones) are extremely sensitive to the long tail in lognormal distributions. Each moment becomes increasingly dominated by the extreme values.
+
+(2) The maximum entropy optimization used to reconstruct the distribution from moments struggles to accurately capture both the bulk and tail of highly skewed distributions.
 
 ```python
 from QuantileFlow import DDSketch, MomentSketch, HDRHistogram
@@ -232,4 +237,4 @@ for q in quantiles:
     actual_val = np.quantile(data, q)
     
     print(f"{q:10.2f} | {dd_val:10.4f} | {moment_val:12.4f} | {hdr_val:12.4f} | {actual_val:10.4f}")
-``` 
+```

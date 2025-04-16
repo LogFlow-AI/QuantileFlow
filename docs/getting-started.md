@@ -99,9 +99,11 @@ fig = histogram.plot_distribution()
 All three algorithms support merging for distributed processing:
 
 ```python
+from QuantileFlow import DDSketch
+
 # Create two histograms
-hist1 = HDRHistogram(num_buckets=8)
-hist2 = HDRHistogram(num_buckets=8)
+hist1 = DDSketch(0.01)
+hist2 = DDSketch(0.01)
 
 # Add different data to each
 for i in range(100):
