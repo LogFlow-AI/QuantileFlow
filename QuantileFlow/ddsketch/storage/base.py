@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-import numpy as np
+import math
 import warnings
 
 class BucketManagementStrategy(Enum):
@@ -82,7 +82,7 @@ class Storage(ABC):
         if self.total_count <= 0:
             return False
             
-        current_order = int(np.floor(np.log10(self.total_count)))
+        current_order = int(math.floor(math.log10(self.total_count)))
         if current_order != self.last_order_of_magnitude:
             self.last_order_of_magnitude = current_order
             return True
@@ -94,4 +94,4 @@ class Storage(ABC):
             # Set m = max(32, c*log(n)) where c is a constant
             # This ensures we have at least 32 buckets for small counts
             # while still maintaining logarithmic growth for larger counts
-            self.max_buckets = max(32, int(100 * np.log10(self.total_count + 1))) 
+            self.max_buckets = max(32, int(100 * math.log10(self.total_count + 1))) 

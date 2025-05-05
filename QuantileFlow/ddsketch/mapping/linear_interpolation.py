@@ -6,14 +6,14 @@ This implementation approximates the memory-optimal logarithmic mapping by:
 2. Linearly interpolating the logarithm between consecutive powers of 2
 """
 
-import numpy as np
+import math
 from .base import MappingScheme
 
 class LinearInterpolationMapping(MappingScheme):
     def __init__(self, relative_accuracy: float):
         self.relative_accuracy = relative_accuracy
         self.gamma = (1 + relative_accuracy) / (1 - relative_accuracy)
-        self.log_gamma = np.log(self.gamma)
+        self.log_gamma = math.log(self.gamma)
         
     def _extract_exponent(self, value: float) -> tuple[int, float]:
         """
@@ -24,7 +24,7 @@ class LinearInterpolationMapping(MappingScheme):
             where normalized_fraction is in [1, 2)
         """
         # Use numpy's frexp for better numerical precision
-        mantissa, exponent = np.frexp(value) # mantissa * 2^exponent = value
+        mantissa, exponent = math.frexp(value) # mantissa * 2^exponent = value
         exponent -= 1  # Convert to floor(log2)
         normalized_fraction = mantissa * 2  # Scale to [1, 2)
         return exponent, normalized_fraction
@@ -42,7 +42,7 @@ class LinearInterpolationMapping(MappingScheme):
         
         # Compute final index
         log2_value = exponent + log2_fraction
-        return int(np.ceil(log2_value / self.log_gamma))
+        return int(math.ceil(log2_value / self.log_gamma))
         
     def compute_value_from_index(self, index: int) -> float:
         """
@@ -58,11 +58,11 @@ class LinearInterpolationMapping(MappingScheme):
         log2_value = index * self.log_gamma
         
         # Extract the integer and fractional parts of log2_value
-        exponent = int(np.floor(log2_value) + 1)
+        exponent = int(math.floor(log2_value) + 1)
         mantissa = (log2_value - exponent + 2) / 2.0
         
         # Use ldexp to efficiently compute 2^exponent * mantissa
-        result = np.ldexp(mantissa, exponent)
+        result = math.ldexp(mantissa, exponent)
         
         # Apply the centering factor
         return result * (2.0 / (1 + self.gamma))

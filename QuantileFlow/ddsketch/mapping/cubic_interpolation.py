@@ -16,6 +16,7 @@ Memory overhead is approximately 1% compared to the optimal logarithmic mapping.
 """
 
 import numpy as np
+import math
 from .base import MappingScheme
 
 
@@ -23,7 +24,7 @@ class CubicInterpolationMapping(MappingScheme):
     def __init__(self, relative_accuracy: float):
         self.gamma = (1 + relative_accuracy) / (1 - relative_accuracy)
         self.relative_accuracy = relative_accuracy
-        self.log2_gamma = np.log2(self.gamma)
+        self.log2_gamma = math.log2(self.gamma)
         
         # Optimal coefficients for cubic interpolation
         # P(s) = As³ + Bs² + Cs where s is in [0,1]
@@ -34,7 +35,7 @@ class CubicInterpolationMapping(MappingScheme):
         # Multiplier m = 7/(10*log(2)) ≈ 1.01
         # This gives us the minimum multiplier that maintains relative accuracy guarantee
         # Divide by C as per Datadog's implementation
-        self.m = 1/ (self.C * np.log(2))
+        self.m = 1/ (self.C * math.log(2))
         
     def _extract_exponent_and_significand(self, value: float) -> tuple[int, float]:
         """
@@ -44,7 +45,7 @@ class CubicInterpolationMapping(MappingScheme):
             tuple: (exponent, significand)
             where significand is in [0, 1)
         """
-        bits = np.frexp(value)
+        bits = math.frexp(value)
         exponent = bits[1] - 1  # frexp returns 2's exponent, we need floor(log2)
         significand = bits[0] * 2 - 1  # Map [0.5, 1) to [0, 1)
         return exponent, significand
@@ -72,7 +73,7 @@ class CubicInterpolationMapping(MappingScheme):
         # where m is the optimal multiplier, e is the exponent,
         # P(s) is the cubic interpolation, and γ is (1+α)/(1-α)
         index = self.m * (exponent + interpolated) / self.log2_gamma
-        return int(np.ceil(index))
+        return int(math.ceil(index))
         
     def compute_value_from_index(self, index: float) -> float:
         """
@@ -83,14 +84,14 @@ class CubicInterpolationMapping(MappingScheme):
         target = (index * self.log2_gamma) / self.m
         
         # Extract integer and fractional parts
-        e = int(np.floor(target))
+        e = int(math.floor(target))
         f = target - e
         
         # If f is close to 0 or 1, return power of 2 directly
         if f < 1e-10:
-            return np.power(2.0, e)
+            return math.pow(2.0, e)
         if abs(f - 1) < 1e-10:
-            return np.power(2.0, e + 1)
+            return math.pow(2.0, e + 1)
             
         # Solve cubic equation As³ + Bs² + Cs - f = 0
         # Using Cardano's formula
@@ -108,18 +109,18 @@ class CubicInterpolationMapping(MappingScheme):
         
         if D > 0:
             # One real root
-            u = np.cbrt(-q/2 + np.sqrt(D))
-            v = np.cbrt(-q/2 - np.sqrt(D))
+            u = np.cbrt(-q/2 + math.sqrt(D))
+            v = np.cbrt(-q/2 - math.sqrt(D))
             s = u + v - b/(3*a)
         else:
             # Three real roots, we want the one in [0,1]
-            phi = np.arccos(-q/(2*np.sqrt(-(p*p*p/27))))
-            s = 2*np.sqrt(-p/3)*np.cos(phi/3) - b/(3*a)
+            phi = math.acos(-q/(2*math.sqrt(-(p*p*p/27))))
+            s = 2*math.sqrt(-p/3)*math.cos(phi/3) - b/(3*a)
             
         # Clamp result to [0,1] to handle numerical errors
         s = np.clip(s, 0, 1)
         
         # Apply geometric mean adjustment and proper scaling for cubic interpolation
         # The multiplier 7.0/10.0 is derived from the optimal cubic interpolation error bound
-        base_value = np.power(2.0, e) * (1 + s)
+        base_value = math.pow(2.0, e) * (1 + s)
         return base_value * (2.0 / (1.0 + self.gamma))
