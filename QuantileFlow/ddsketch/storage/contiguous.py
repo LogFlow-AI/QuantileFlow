@@ -34,20 +34,6 @@ class ContiguousStorage(Storage):
         self.arr_index_of_min_bucket = 0  # Array index where min bucket is stored
         self.collapse_count = 0  # Number of times buckets have been collapsed
     
-    def _get_position(self, bucket_index: int) -> int:
-        """
-        Get array position for bucket index using new mapping formula.
-        
-        Args:
-            bucket_index: The bucket index to map to array position.
-            
-        Returns:
-            The array position in the circular buffer.
-        """
-        if self.min_index is None:
-            return 0
-        return (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
-    
     def add(self, bucket_index: int, count: int = 1):
         """
         Add count to bucket_index using new collapsing strategy.
@@ -72,7 +58,7 @@ class ContiguousStorage(Storage):
                 # Handle insertion below current minimum
                 if new_range > len(self.counts):
                     # Range too large, collapse into min bucket
-                    pos = self._get_position(self.min_index)
+                    pos = (self.arr_index_of_min_bucket) % len(self.counts)
                     self.counts[pos] += count
                     self.collapse_count += 1
                 else:
@@ -80,7 +66,7 @@ class ContiguousStorage(Storage):
                     shift = self.min_index - bucket_index
                     self.min_index = bucket_index
                     self.arr_index_of_min_bucket = self.arr_index_of_min_bucket - shift
-                    pos = self._get_position(bucket_index)
+                    pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
                     self.counts[pos] = count
                     self.num_buckets += 1
                     
@@ -103,7 +89,7 @@ class ContiguousStorage(Storage):
                         
                     # Add collapsed values to new min bucket
                     new_min = self.min_index + buckets_to_collapse
-                    new_min_pos = self._get_position(new_min)
+                    new_min_pos = (buckets_to_collapse + self.arr_index_of_min_bucket) % len(self.counts)
                     self.counts[new_min_pos] += collapse_sum
                     
                     # Update tracking variables
@@ -113,14 +99,14 @@ class ContiguousStorage(Storage):
                 
                 # Place new value
                 self.max_index = bucket_index
-                pos = self._get_position(bucket_index)
+                pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
                 was_zero = self.counts[pos] == 0
                 self.counts[pos] += count
                 if was_zero:
                     self.num_buckets += 1
             else:
                 # Normal insertion within current range
-                pos = self._get_position(bucket_index)
+                pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
                 was_zero = self.counts[pos] == 0
                 self.counts[pos] += count
                 if was_zero:
@@ -143,7 +129,7 @@ class ContiguousStorage(Storage):
             return False
             
         if self.min_index <= bucket_index <= self.max_index:
-            pos = self._get_position(bucket_index)
+            pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
             old_count = self.counts[pos]
             
             if old_count == 0:
@@ -191,7 +177,7 @@ class ContiguousStorage(Storage):
         if self.min_index is None or bucket_index < self.min_index or bucket_index > self.max_index:
             warnings.warn("Bucket index is out of range. Returning 0.", UserWarning)
             return 0
-        pos = self._get_position(bucket_index)
+        pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
         return int(self.counts[pos])
     
     def merge(self, other: 'ContiguousStorage'):

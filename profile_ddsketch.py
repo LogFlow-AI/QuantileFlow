@@ -1,6 +1,5 @@
 import cProfile
 import pstats
-import io
 import json
 import argparse
 from pathlib import Path
@@ -199,8 +198,6 @@ def merge_trial_stats(all_trial_stats: List[List[Dict]]) -> Tuple[List[Dict], Li
     for func, stats_list in func_stats.items():
         if not stats_list:
             continue
-            
-        n = len(stats_list)
         
         # Compute means
         mean_stat = {
@@ -327,7 +324,7 @@ def profile(num_values: int = 10_000_000,
     print(f"  • Values inserted per trial: {results['num_values']:,}")
     if num_trials > 1:
         print(f"  • Total values processed: {results['num_values'] * num_trials:,}")
-    print(f"  • Sample quantiles from last trial:")
+    print("  • Sample quantiles from last trial:")
     for q, val in results['quantiles'].items():
         print(f"    - Q({q}): {val}")
     
