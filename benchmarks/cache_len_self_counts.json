@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-01-10T16:26:33.986951",
+  "name": "cache_len_self_counts",
+  "metadata": {
+    "num_values": 10000000,
+    "num_trials": 5,
+    "timestamp": "2026-01-10T16:26:33.986892"
+  },
+  "stats": [
+    {
+      "function": "profile_ddsketch.py:17(run_sketch_operations)",
+      "ncalls": 1,
+      "tottime": 1.3366227698000002,
+      "cumtime": 11.3580648152,
+      "percall_tot": 1.3366227698000002,
+      "percall_cum": 11.3580648152
+    },
+    {
+      "function": "core.py:77(insert)",
+      "ncalls": 10000000,
+      "tottime": 3.1263041402000002,
+      "cumtime": 10.0199071374,
+      "percall_tot": 3.1263041402e-07,
+      "percall_cum": 1.0019907137400002e-06
+    },
+    {
+      "function": "contiguous.py:38(add)",
+      "ncalls": 10000000,
+      "tottime": 3.8569736876,
+      "cumtime": 3.8569736876,
+      "percall_tot": 3.8569736875999994e-07,
+      "percall_cum": 3.8569736875999994e-07
+    },
+    {
+      "function": "logarithmic.py:12(compute_bucket_index)",
+      "ncalls": 10000000,
+      "tottime": 1.8100902910000003,
+      "cumtime": 3.0366293096,
+      "percall_tot": 1.810090291e-07,
+      "percall_cum": 3.0366293096000003e-07
+    },
+    {
+      "function": "~:0(<built-in method math.log>)",
+      "ncalls": 10000001,
+      "tottime": 0.671522876,
+      "cumtime": 0.671522876,
+      "percall_tot": 6.71522808847719e-08,
+      "percall_cum": 6.71522808847719e-08
+    },
+    {
+      "function": "~:0(<built-in method math.ceil>)",
+      "ncalls": 10000000,
+      "tottime": 0.555017911,
+      "cumtime": 0.555017911,
+      "percall_tot": 5.550179110000001e-08,
+      "percall_cum": 5.550179110000001e-08
+    },
+    {
+      "function": "core.py:128(quantile)",
+      "ncalls": 4,
+      "tottime": 0.0006492008,
+      "cumtime": 0.0014758362000000002,
+      "percall_tot": 0.0001623002,
+      "percall_cum": 0.00036895905000000005
+    },
+    {
+      "function": "contiguous.py:168(get_count)",
+      "ncalls": 3175,
+      "tottime": 0.0007850656000000001,
+      "cumtime": 0.0007850656000000001,
+      "percall_tot": 2.450894805204026e-07,
+      "percall_cum": 2.450894805204026e-07
+    },
+    {
+      "function": "core.py:24(__init__)",
+      "ncalls": 1,
+      "tottime": 8.736200000000001e-06,
+      "cumtime": 5.907179999999999e-05,
+      "percall_tot": 8.736200000000001e-06,
+      "percall_cum": 5.907179999999999e-05
+    },
+    {
+      "function": "~:0(<method 'disable' of '_lsprof.Profiler' objects>)",
+      "ncalls": 1,
+      "tottime": 4.9611800000000005e-05,
+      "cumtime": 4.9611800000000005e-05,
+      "percall_tot": 4.9611800000000005e-05,
+      "percall_cum": 4.9611800000000005e-05
+    },
+    {
+      "function": "contiguous.py:19(__init__)",
+      "ncalls": 2,
+      "tottime": 1.16142e-05,
+      "cumtime": 4.36792e-05,
+      "percall_tot": 5.8071e-06,
+      "percall_cum": 2.18396e-05
+    },
+    {
+      "function": "logarithmic.py:16(compute_value_from_index)",
+      "ncalls": 4,
+      "tottime": 3.6364999999999995e-05,
+      "cumtime": 4.15698e-05,
+      "percall_tot": 9.091249999999999e-06,
+      "percall_cum": 1.039245e-05
+    },
+    {
+      "function": "~:0(<built-in method numpy.zeros>)",
+      "ncalls": 2,
+      "tottime": 2.748e-05,
+      "cumtime": 2.748e-05,
+      "percall_tot": 1.374e-05,
+      "percall_cum": 1.374e-05
+    },
+    {
+      "function": "logarithmic.py:7(__init__)",
+      "ncalls": 1,
+      "tottime": 4.8880000000000005e-06,
+      "cumtime": 6.656400000000001e-06,
+      "percall_tot": 4.8880000000000005e-06,
+      "percall_cum": 6.656400000000001e-06
+    },
+    {
+      "function": "~:0(<built-in method math.pow>)",
+      "ncalls": 4,
+      "tottime": 5.204800000000001e-06,
+      "cumtime": 5.204800000000001e-06,
+      "percall_tot": 1.3012000000000003e-06,
+      "percall_cum": 1.3012000000000003e-06
+    },
+    {
+      "function": "base.py:17(__init__)",
+      "ncalls": 2,
+      "tottime": 4.584999999999999e-06,
+      "cumtime": 4.584999999999999e-06,
+      "percall_tot": 2.2924999999999997e-06,
+      "percall_cum": 2.2924999999999997e-06
+    }
+  ]
+}
