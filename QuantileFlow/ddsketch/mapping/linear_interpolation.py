@@ -30,9 +30,6 @@ class LinearInterpolationMapping(MappingScheme):
         return exponent, normalized_fraction
         
     def compute_bucket_index(self, value: float) -> int:
-        if value <= 0:
-            raise ValueError("Value must be positive")
-            
         # Get binary exponent and normalized fraction
         exponent, normalized_fraction = self._extract_exponent(value)
         
@@ -42,7 +39,7 @@ class LinearInterpolationMapping(MappingScheme):
         
         # Compute final index
         log2_value = exponent + log2_fraction
-        return int(math.ceil(log2_value / self.log_gamma))
+        return math.ceil(log2_value / self.log_gamma)
         
     def compute_value_from_index(self, index: int) -> float:
         """
@@ -58,7 +55,7 @@ class LinearInterpolationMapping(MappingScheme):
         log2_value = index * self.log_gamma
         
         # Extract the integer and fractional parts of log2_value
-        exponent = int(math.floor(log2_value) + 1)
+        exponent = math.floor(log2_value) + 1
         mantissa = (log2_value - exponent + 2) / 2.0
         
         # Use ldexp to efficiently compute 2^exponent * mantissa

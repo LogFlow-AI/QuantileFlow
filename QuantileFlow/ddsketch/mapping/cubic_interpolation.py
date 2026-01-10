@@ -59,9 +59,6 @@ class CubicInterpolationMapping(MappingScheme):
         return s * (self.C + s * (self.B + s * self.A))
         
     def compute_bucket_index(self, value: float) -> int:
-        if value <= 0:
-            raise ValueError("Value must be positive")
-            
         # Get binary exponent and normalized significand
         exponent, significand = self._extract_exponent_and_significand(value)
         
@@ -73,7 +70,7 @@ class CubicInterpolationMapping(MappingScheme):
         # where m is the optimal multiplier, e is the exponent,
         # P(s) is the cubic interpolation, and γ is (1+α)/(1-α)
         index = self.m * (exponent + interpolated) / self.log2_gamma
-        return int(math.ceil(index))
+        return math.ceil(index)
         
     def compute_value_from_index(self, index: float) -> float:
         """
@@ -84,7 +81,7 @@ class CubicInterpolationMapping(MappingScheme):
         target = (index * self.log2_gamma) / self.m
         
         # Extract integer and fractional parts
-        e = int(math.floor(target))
+        e = math.floor(target)
         f = target - e
         
         # If f is close to 0 or 1, return power of 2 directly

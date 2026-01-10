@@ -10,10 +10,8 @@ class LogarithmicMapping(MappingScheme):
         self.multiplier = 1 / math.log(self.gamma)
         
     def compute_bucket_index(self, value: float) -> int:
-        if value <= 0:
-            raise ValueError(f"Value must be positive, got {value}")
         # ceil(log_gamma(value) = ceil(log(value) / log(gamma))
-        return int(math.ceil(math.log(value) * self.multiplier))
+        return math.ceil(math.log(value) * self.multiplier)
     
     def compute_value_from_index(self, index: int) -> float:
         # Return geometric mean of bucket boundaries
