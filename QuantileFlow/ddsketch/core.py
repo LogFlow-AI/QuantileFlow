@@ -89,10 +89,10 @@ class DDSketch:
         elif value > 0:
             bucket_idx = self.mapping.compute_bucket_index(value)
             self.positive_store.add(bucket_idx)
-        elif value < 0 and self.cont_neg:
+        elif self.cont_neg:
             bucket_idx = self.mapping.compute_bucket_index(-value)
             self.negative_store.add(bucket_idx)
-        elif value < 0:
+        else:
             raise ValueError("Negative values not supported when cont_neg is False")
         self.count += 1
     
