@@ -622,10 +622,6 @@ Examples:
     elif args.line_profile:
         # Use fewer values by default for line profiling if not specified
         num_vals = args.num_values
-        if args.num_values == 10_000_000:  # Default value
-            num_vals = 1_000_000
-            print(f"ℹ️  Using {num_vals:,} values for line profiling (override with --num-values)")
-        
         if args.line_output:
             line_profile_to_file(num_vals, args.functions, args.line_output)
         else:

@@ -47,8 +47,6 @@ class ContiguousStorage(Storage):
             bucket_index: The bucket index to add to.
             count: The count to add (default 1).
         """
-        if count <= 0:
-            return
             
         if self.min_index is None:
             # First insertion
@@ -180,7 +178,6 @@ class ContiguousStorage(Storage):
             The count at the specified bucket index.
         """
         if self.min_index is None or bucket_index < self.min_index or bucket_index > self.max_index:
-            warnings.warn("Bucket index is out of range. Returning 0.", UserWarning)
             return 0
         pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
         return int(self.counts[pos])
