@@ -6,26 +6,37 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Tuple
 import numpy as np
+import sys
+from io import StringIO
 
 from QuantileFlow.ddsketch.core import DDSketch
+
+# Optional line profiler import
+try:
+    from line_profiler import LineProfiler
+    LINE_PROFILER_AVAILABLE = True
+except ImportError:
+    LINE_PROFILER_AVAILABLE = False
 
 
 BENCHMARK_DIR = Path("benchmarks")
 BENCHMARK_DIR.mkdir(exist_ok=True)
 
 
-def run_sketch_operations(num_values: int = 10_000_000) -> Dict:
+def run_sketch_operations(sketch: DDSketch, data: np.ndarray) -> Dict:
     """Runs typical DDSketch operations for profiling.
+    
+    This function should be called ONLY when profiler is enabled,
+    so it doesn't include initialization or data generation overhead.
+    
+    Args:
+        sketch: Pre-initialized DDSketch instance
+        data: Pre-generated data array
     
     Returns:
         Dict containing operation results and metrics
     """
-    sketch = DDSketch(relative_accuracy=0.01)
-    
-    # Generate random data
-    data = np.random.rand(num_values) * 1000
-    
-    # Track insertion time
+    # Core operations - ONLY these are profiled
     for value in data:
         sketch.insert(value)
         
@@ -40,7 +51,7 @@ def run_sketch_operations(num_values: int = 10_000_000) -> Dict:
             quantile_results[q] = f"Error: {e}"
     
     return {
-        'num_values': num_values,
+        'num_values': len(data),
         'quantiles': quantile_results
     }
 
@@ -298,10 +309,15 @@ def profile(num_values: int = 10_000_000,
         if num_trials > 1:
             print(f"\n▶ Running trial {trial + 1}/{num_trials}...")
         
+        # Initialize sketch and data BEFORE profiling (exclude overhead)
+        sketch = DDSketch(relative_accuracy=0.01)
+        data = np.random.rand(num_values) * 1000
+        
+        # Profile ONLY the core operations
         profiler = cProfile.Profile()
         profiler.enable()
         
-        results = run_sketch_operations(num_values)
+        results = run_sketch_operations(sketch, data)
         
         profiler.disable()
         
@@ -390,6 +406,155 @@ def profile(num_values: int = 10_000_000,
     print("\n✅ Profiling complete.\n")
 
 
+def line_profile(num_values: int = 1_000_000,
+                 functions_to_profile: List[str] = None,
+                 num_trials: int = 1):
+    """Perform line-by-line profiling of specified functions.
+    
+    Args:
+        num_values: Number of values to insert per trial
+        functions_to_profile: List of function paths to profile (e.g., 'insert', 'add', 'compute_bucket_index')
+        num_trials: Number of trials to run and average
+    """
+    if not LINE_PROFILER_AVAILABLE:
+        print("\n❌ Error: line_profiler is not installed!")
+        print("   Install with: pip install line_profiler")
+        return
+    
+    # Import the modules we want to profile
+    from QuantileFlow.ddsketch.core import DDSketch
+    from QuantileFlow.ddsketch.storage.contiguous import ContiguousStorage
+    from QuantileFlow.ddsketch.mapping.logarithmic import LogarithmicMapping
+    
+    # Default functions to profile
+    if functions_to_profile is None:
+        functions_to_profile = ['insert', 'add', 'compute_bucket_index']
+    
+    # Map function names to actual function objects
+    function_map = {
+        'insert': DDSketch.insert,
+        'add': ContiguousStorage.add,
+        'remove': ContiguousStorage.remove,
+        'get_count': ContiguousStorage.get_count,
+        'compute_bucket_index': LogarithmicMapping.compute_bucket_index,
+        'compute_value_from_index': LogarithmicMapping.compute_value_from_index,
+        'quantile': DDSketch.quantile,
+    }
+    
+    # Validate and get function objects
+    functions_to_profile_obj = []
+    for func_name in functions_to_profile:
+        if func_name in function_map:
+            functions_to_profile_obj.append(function_map[func_name])
+        else:
+            print(f"⚠️  Warning: Unknown function '{func_name}', skipping")
+    
+    if not functions_to_profile_obj:
+        print("\n❌ Error: No valid functions to profile!")
+        return
+    
+    print(f"\n{'Starting Line-Level Profile':^60}")
+    print('=' * 60)
+    print(f"Values per trial: {num_values:,}")
+    print(f"Number of trials: {num_trials}")
+    print("Functions to profile:")
+    for func in functions_to_profile:
+        if func in function_map:
+            print(f"  • {func}")
+    print('=' * 60)
+    
+    # Run profiling across multiple trials
+    all_results = []
+    
+    for trial in range(num_trials):
+        if num_trials > 1:
+            print(f"\n▶ Running trial {trial + 1}/{num_trials}...")
+        
+        # Initialize sketch and data BEFORE profiling (exclude overhead)
+        sketch = DDSketch(relative_accuracy=0.01)
+        data = np.random.rand(num_values) * 1000
+        
+        # Create line profiler
+        lp = LineProfiler()
+        
+        # Add functions to profile
+        for func in functions_to_profile_obj:
+            lp.add_function(func)
+        
+        # Profile ONLY the core operations
+        lp.enable()
+        
+        # Run insertions (no lambda wrapper overhead)
+        for value in data:
+            sketch.insert(value)
+        
+        # Also compute some quantiles to profile quantile function
+        if 'quantile' in functions_to_profile:
+            for q in [0.5, 0.9, 0.99, 0.999]:
+                sketch.quantile(q)
+        
+        lp.disable()
+        
+        # Capture output
+        string_buffer = StringIO()
+        lp.print_stats(stream=string_buffer)
+        all_results.append(string_buffer.getvalue())
+    
+    # Print results from last trial (most representative)
+    print("\n" + "=" * 120)
+    print(f"{'Line-by-Line Profiling Results':^120}")
+    if num_trials > 1:
+        print(f"{'(Showing results from trial ' + str(num_trials) + ')':^120}")
+    print("=" * 120)
+    print(all_results[-1])
+    
+    # Optionally save detailed results
+    if num_trials > 1:
+        print(f"\n💡 Tip: Results shown are from the last trial. All {num_trials} trials were run for consistency.")
+    
+    # Print optimization suggestions based on results
+    print("\n" + "=" * 120)
+    print("🔍 Analysis Tips:")
+    print("  • Look for lines with high '% Time' - these are the bottlenecks")
+    print("  • High '# Hits' with moderate time per hit suggests vectorization opportunities")
+    print("  • Compare 'Time' vs '% Time' to understand relative impact")
+    print("  • Lines with 0 hits but in hot functions may be branches you can optimize")
+    print("=" * 120)
+    
+    print("\n✅ Line profiling complete.\n")
+
+
+def line_profile_to_file(num_values: int = 1_000_000,
+                         functions_to_profile: List[str] = None,
+                         output_file: str = "line_profile_output.txt"):
+    """Perform line profiling and save results to file.
+    
+    Args:
+        num_values: Number of values to insert
+        functions_to_profile: List of function paths to profile
+        output_file: Output file path
+    """
+    if not LINE_PROFILER_AVAILABLE:
+        print("\n❌ Error: line_profiler is not installed!")
+        print("   Install with: pip install line_profiler")
+        return
+    
+    # Capture output
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    
+    try:
+        line_profile(num_values, functions_to_profile, num_trials=1)
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdout = old_stdout
+    
+    # Write to file
+    output_path = Path(output_file)
+    output_path.write_text(output)
+    print(f"\n✅ Line profile saved to: {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Profile DDSketch operations with benchmarking capabilities",
@@ -413,6 +578,16 @@ Examples:
   
   # Quick test with fewer values
   python profile_ddsketch.py --num-values 1000000 --num-trials 3
+  
+  # LINE PROFILING (requires line_profiler):
+  # Profile specific functions line-by-line
+  python profile_ddsketch.py --line-profile --num-values 1000000
+  
+  # Profile specific functions
+  python profile_ddsketch.py --line-profile --functions insert add compute_bucket_index
+  
+  # Profile with multiple trials for stability
+  python profile_ddsketch.py --line-profile --num-values 500000 --num-trials 3
         """
     )
     
@@ -429,10 +604,32 @@ Examples:
     parser.add_argument('--top-n', type=int, default=20,
                         help='Number of top functions to display (default: 20)')
     
+    # Line profiling arguments
+    parser.add_argument('--line-profile', action='store_true',
+                        help='Enable line-by-line profiling (requires line_profiler)')
+    parser.add_argument('--functions', nargs='+', 
+                        default=['insert', 'add', 'compute_bucket_index'],
+                        help='Functions to line-profile: insert, add, remove, get_count, '
+                             'compute_bucket_index, compute_value_from_index, quantile '
+                             '(default: insert add compute_bucket_index)')
+    parser.add_argument('--line-output', type=str,
+                        help='Save line profile output to file')
+    
     args = parser.parse_args()
     
     if args.list:
         list_benchmarks()
+    elif args.line_profile:
+        # Use fewer values by default for line profiling if not specified
+        num_vals = args.num_values
+        if args.num_values == 10_000_000:  # Default value
+            num_vals = 1_000_000
+            print(f"ℹ️  Using {num_vals:,} values for line profiling (override with --num-values)")
+        
+        if args.line_output:
+            line_profile_to_file(num_vals, args.functions, args.line_output)
+        else:
+            line_profile(num_vals, args.functions, args.num_trials)
     else:
         profile(
             num_values=args.num_values,

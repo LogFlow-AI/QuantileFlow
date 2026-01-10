@@ -4,7 +4,9 @@ import math
 from .base import MappingScheme
 
 class LogarithmicMapping(MappingScheme):
-    def __init__(self, relative_accuracy: float):
+    __slots__ = ('relative_accuracy', 'gamma', 'multiplier')
+    
+    def __init__(self, relative_accuracy: float):        
         self.relative_accuracy = relative_accuracy
         self.gamma = (1 + relative_accuracy) / (1 - relative_accuracy)
         self.multiplier = 1 / math.log(self.gamma)

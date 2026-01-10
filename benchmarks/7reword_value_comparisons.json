@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-01-10T17:13:13.833726",
+  "name": "7reword_value_comparisons",
+  "metadata": {
+    "num_values": 10000000,
+    "num_trials": 5,
+    "timestamp": "2026-01-10T17:13:13.833712"
+  },
+  "stats": [
+    {
+      "function": "profile_ddsketch.py:26(run_sketch_operations)",
+      "ncalls": 1,
+      "tottime": 1.8573772013999998,
+      "cumtime": 15.3256251814,
+      "percall_tot": 1.8573772013999998,
+      "percall_cum": 15.3256251814
+    },
+    {
+      "function": "core.py:77(insert)",
+      "ncalls": 10000000,
+      "tottime": 4.248560426,
+      "cumtime": 13.4664414144,
+      "percall_tot": 4.2485604260000007e-07,
+      "percall_cum": 1.34664414144e-06
+    },
+    {
+      "function": "contiguous.py:42(add)",
+      "ncalls": 10000000,
+      "tottime": 5.1584048128,
+      "cumtime": 5.1584048128,
+      "percall_tot": 5.158404812800001e-07,
+      "percall_cum": 5.158404812800001e-07
+    },
+    {
+      "function": "logarithmic.py:14(compute_bucket_index)",
+      "ncalls": 10000000,
+      "tottime": 2.3456515052,
+      "cumtime": 4.0594761756,
+      "percall_tot": 2.3456515052000006e-07,
+      "percall_cum": 4.0594761756000005e-07
+    },
+    {
+      "function": "~:0(<built-in method math.log>)",
+      "ncalls": 10000001,
+      "tottime": 0.9696837526,
+      "cumtime": 0.9696837526,
+      "percall_tot": 9.696836556316345e-08,
+      "percall_cum": 9.696836556316345e-08
+    },
+    {
+      "function": "~:0(<built-in method math.ceil>)",
+      "ncalls": 10000000,
+      "tottime": 0.7441432736,
+      "cumtime": 0.7441432736,
+      "percall_tot": 7.441432736e-08,
+      "percall_cum": 7.441432736e-08
+    },
+    {
+      "function": "core.py:129(quantile)",
+      "ncalls": 4,
+      "tottime": 0.0007785592000000001,
+      "cumtime": 0.0017527554,
+      "percall_tot": 0.00019463980000000003,
+      "percall_cum": 0.00043818885
+    },
+    {
+      "function": "contiguous.py:172(get_count)",
+      "ncalls": 3338,
+      "tottime": 0.0009408718,
+      "cumtime": 0.0009408718,
+      "percall_tot": 2.7929728771085877e-07,
+      "percall_cum": 2.7929728771085877e-07
+    },
+    {
+      "function": "core.py:24(__init__)",
+      "ncalls": 1,
+      "tottime": 1.0402600000000001e-05,
+      "cumtime": 5.38102e-05,
+      "percall_tot": 1.0402600000000001e-05,
+      "percall_cum": 5.38102e-05
+    },
+    {
+      "function": "~:0(<method 'disable' of '_lsprof.Profiler' objects>)",
+      "ncalls": 1,
+      "tottime": 4.279240000000001e-05,
+      "cumtime": 4.279240000000001e-05,
+      "percall_tot": 4.279240000000001e-05,
+      "percall_cum": 4.279240000000001e-05
+    },
+    {
+      "function": "contiguous.py:23(__init__)",
+      "ncalls": 2,
+      "tottime": 1.21986e-05,
+      "cumtime": 3.51634e-05,
+      "percall_tot": 6.0993e-06,
+      "percall_cum": 1.75817e-05
+    },
+    {
+      "function": "logarithmic.py:18(compute_value_from_index)",
+      "ncalls": 4,
+      "tottime": 2.9578800000000002e-05,
+      "cumtime": 3.332440000000001e-05,
+      "percall_tot": 7.3947000000000005e-06,
+      "percall_cum": 8.331100000000002e-06
+    },
+    {
+      "function": "~:0(<built-in method numpy.zeros>)",
+      "ncalls": 2,
+      "tottime": 1.8467600000000003e-05,
+      "cumtime": 1.8467600000000003e-05,
+      "percall_tot": 9.233800000000001e-06,
+      "percall_cum": 9.233800000000001e-06
+    },
+    {
+      "function": "logarithmic.py:9(__init__)",
+      "ncalls": 1,
+      "tottime": 5.8884e-06,
+      "cumtime": 8.244200000000001e-06,
+      "percall_tot": 5.8884e-06,
+      "percall_cum": 8.244200000000001e-06
+    },
+    {
+      "function": "base.py:17(__init__)",
+      "ncalls": 2,
+      "tottime": 4.4972e-06,
+      "cumtime": 4.4972e-06,
+      "percall_tot": 2.2486e-06,
+      "percall_cum": 2.2486e-06
+    },
+    {
+      "function": "~:0(<built-in method math.pow>)",
+      "ncalls": 4,
+      "tottime": 3.7456e-06,
+      "cumtime": 3.7456e-06,
+      "percall_tot": 9.364e-07,
+      "percall_cum": 9.364e-07
+    }
+  ]
+}

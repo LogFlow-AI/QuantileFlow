@@ -15,6 +15,10 @@ class ContiguousStorage(Storage):
     - If inserting below min: collapse if range too large, otherwise adjust min
     - If inserting above max: collapse lowest buckets to make room
     """
+
+    __slots__ = ('total_count', 'counts', 'min_index', 'max_index', 
+                 'num_buckets', 'arr_index_of_min_bucket', 'collapse_count',
+                 'max_buckets', 'bucket_mask', 'strategy')
     
     def __init__(self, max_buckets: int = 2048):
         """
