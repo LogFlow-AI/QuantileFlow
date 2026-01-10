@@ -84,16 +84,17 @@ class DDSketch:
         Raises:
             ValueError: If value is negative and cont_neg is False.
         """
-        if value == 0:
-            self.zero_count += 1
-        elif value > 0:
+        if value > 0:
             bucket_idx = self.mapping.compute_bucket_index(value)
             self.positive_store.add(bucket_idx)
-        elif value < 0 and self.cont_neg:
-            bucket_idx = self.mapping.compute_bucket_index(-value)
-            self.negative_store.add(bucket_idx)
         elif value < 0:
-            raise ValueError("Negative values not supported when cont_neg is False")
+            if self.cont_neg:
+                bucket_idx = self.mapping.compute_bucket_index(-value)
+                self.negative_store.add(bucket_idx)
+            else:
+                raise ValueError("Negative values not supported when cont_neg is False")
+        else:
+            self.zero_count += 1
         self.count += 1
     
     def delete(self, value: Union[int, float]) -> None:

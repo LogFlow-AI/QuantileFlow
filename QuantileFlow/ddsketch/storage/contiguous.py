@@ -15,6 +15,10 @@ class ContiguousStorage(Storage):
     - If inserting below min: collapse if range too large, otherwise adjust min
     - If inserting above max: collapse lowest buckets to make room
     """
+
+    __slots__ = ('total_count', 'counts', 'min_index', 'max_index', 
+                 'num_buckets', 'arr_index_of_min_bucket', 'collapse_count',
+                 'max_buckets', 'bucket_mask', 'strategy')
     
     def __init__(self, max_buckets: int = 2048):
         """
@@ -28,25 +32,12 @@ class ContiguousStorage(Storage):
         super().__init__(max_buckets, BucketManagementStrategy.FIXED)
         self.total_count = 0
         self.counts = np.zeros(max_buckets, dtype=np.int64)
+        self.max_buckets = max_buckets
         self.min_index = None  # Minimum bucket index seen
         self.max_index = None  # Maximum bucket index seen
         self.num_buckets = 0   # Number of non-zero buckets
         self.arr_index_of_min_bucket = 0  # Array index where min bucket is stored
         self.collapse_count = 0  # Number of times buckets have been collapsed
-    
-    def _get_position(self, bucket_index: int) -> int:
-        """
-        Get array position for bucket index using new mapping formula.
-        
-        Args:
-            bucket_index: The bucket index to map to array position.
-            
-        Returns:
-            The array position in the circular buffer.
-        """
-        if self.min_index is None:
-            return 0
-        return (bucket_index - self.min_index + self.arr_index_of_min_bucket) % len(self.counts)
     
     def add(self, bucket_index: int, count: int = 1):
         """
@@ -56,8 +47,6 @@ class ContiguousStorage(Storage):
             bucket_index: The bucket index to add to.
             count: The count to add (default 1).
         """
-        if count <= 0:
-            return
             
         if self.min_index is None:
             # First insertion
@@ -70,9 +59,9 @@ class ContiguousStorage(Storage):
             if bucket_index < self.min_index:
                 new_range = self.max_index - bucket_index + 1
                 # Handle insertion below current minimum
-                if new_range > len(self.counts):
+                if new_range > self.max_buckets:
                     # Range too large, collapse into min bucket
-                    pos = self._get_position(self.min_index)
+                    pos = (self.arr_index_of_min_bucket) % self.max_buckets
                     self.counts[pos] += count
                     self.collapse_count += 1
                 else:
@@ -80,13 +69,13 @@ class ContiguousStorage(Storage):
                     shift = self.min_index - bucket_index
                     self.min_index = bucket_index
                     self.arr_index_of_min_bucket = self.arr_index_of_min_bucket - shift
-                    pos = self._get_position(bucket_index)
+                    pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
                     self.counts[pos] = count
                     self.num_buckets += 1
                     
             elif bucket_index > self.max_index:
                 new_range = bucket_index - self.min_index + 1
-                if new_range > len(self.counts):
+                if new_range > self.max_buckets:
                     # Handle insertion above current maximum
                     buckets_to_collapse = bucket_index - self.max_index
                     # Collapse lowest buckets
@@ -103,7 +92,7 @@ class ContiguousStorage(Storage):
                         
                     # Add collapsed values to new min bucket
                     new_min = self.min_index + buckets_to_collapse
-                    new_min_pos = self._get_position(new_min)
+                    new_min_pos = (buckets_to_collapse + self.arr_index_of_min_bucket) % self.max_buckets
                     self.counts[new_min_pos] += collapse_sum
                     
                     # Update tracking variables
@@ -113,14 +102,14 @@ class ContiguousStorage(Storage):
                 
                 # Place new value
                 self.max_index = bucket_index
-                pos = self._get_position(bucket_index)
+                pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
                 was_zero = self.counts[pos] == 0
                 self.counts[pos] += count
                 if was_zero:
                     self.num_buckets += 1
             else:
                 # Normal insertion within current range
-                pos = self._get_position(bucket_index)
+                pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
                 was_zero = self.counts[pos] == 0
                 self.counts[pos] += count
                 if was_zero:
@@ -143,7 +132,7 @@ class ContiguousStorage(Storage):
             return False
             
         if self.min_index <= bucket_index <= self.max_index:
-            pos = self._get_position(bucket_index)
+            pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
             old_count = self.counts[pos]
             
             if old_count == 0:
@@ -160,7 +149,7 @@ class ContiguousStorage(Storage):
                 elif bucket_index == self.min_index:
                     # Find new minimum index
                     for i in range(self.max_index - self.min_index + 1):
-                        pos = (self.arr_index_of_min_bucket + i) % len(self.counts)
+                        pos = (self.arr_index_of_min_bucket + i) % self.max_buckets
                         if self.counts[pos] > 0:
                             self.min_index += i
                             self.arr_index_of_min_bucket = pos
@@ -168,7 +157,7 @@ class ContiguousStorage(Storage):
                 elif bucket_index == self.max_index:
                     # Find new maximum index
                     for i in range(self.max_index - self.min_index + 1):
-                        pos = (self.arr_index_of_min_bucket + (self.max_index - self.min_index - i)) % len(self.counts)
+                        pos = (self.arr_index_of_min_bucket + (self.max_index - self.min_index - i)) % self.max_buckets
                         if self.counts[pos] > 0:
                             self.max_index -= i
                             break
@@ -189,9 +178,8 @@ class ContiguousStorage(Storage):
             The count at the specified bucket index.
         """
         if self.min_index is None or bucket_index < self.min_index or bucket_index > self.max_index:
-            warnings.warn("Bucket index is out of range. Returning 0.", UserWarning)
             return 0
-        pos = self._get_position(bucket_index)
+        pos = (bucket_index - self.min_index + self.arr_index_of_min_bucket) % self.max_buckets
         return int(self.counts[pos])
     
     def merge(self, other: 'ContiguousStorage'):
@@ -206,7 +194,7 @@ class ContiguousStorage(Storage):
             
         # Add each non-zero bucket
         for i in range(other.max_index - other.min_index + 1):
-            pos = (other.arr_index_of_min_bucket + i) % len(other.counts)
+            pos = (other.arr_index_of_min_bucket + i) % other.max_buckets
             if other.counts[pos] > 0:
                 bucket_index = other.min_index + i
                 self.add(bucket_index, int(other.counts[pos]))

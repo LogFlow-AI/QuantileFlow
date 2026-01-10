@@ -30,7 +30,7 @@ install: install-env-run install-env-docs install-env-test
 install-env-run:
 	@echo "👷‍♂️ $(BLUE)creating virtual environment $(PROJECT)-run$(NC)"
 	pyenv local --unset
-	-pyenv virtualenv $(PROJECT)-run > /dev/null
+	-pyenv virtualenv $(word 1,$(PYTHON_VERSIONS)) $(PROJECT)-run > /dev/null
 	pyenv local $(PROJECT)-run
 	pip install --no-user -U pip > /dev/null
 	pip install --no-user -r requirements.txt > /dev/null
@@ -39,7 +39,7 @@ install-env-run:
 install-env-docs:
 	@echo "👷‍♂️ $(BLUE)creating virtual environment $(PROJECT)-docs$(NC)"
 	pyenv local --unset
-	-pyenv virtualenv $(PROJECT)-docs > /dev/null
+	-pyenv virtualenv $(word 1,$(PYTHON_VERSIONS)) $(PROJECT)-docs > /dev/null
 	pyenv local $(PROJECT)-docs
 	pip install --no-user -U pip > /dev/null
 	pip install --no-user -r requirements.docs.txt > /dev/null
