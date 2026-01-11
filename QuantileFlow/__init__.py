@@ -22,7 +22,7 @@ from QuantileFlow.momentsketch.core import MomentSketch
 from QuantileFlow.hdrhistogram.core import HDRHistogram
 from QuantileFlow.ddsketch.core import DDSketch
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 __all__ = [
     "MomentSketch",
     "HDRHistogram",
