@@ -1,0 +1,7 @@
+numpy
+pandas
+pytest
+coverage
+kafka-python
+quantileflow
+ddsketch
