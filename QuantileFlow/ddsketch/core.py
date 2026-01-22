@@ -1,4 +1,7 @@
-"""Core DDSketch implementation."""
+"""Core DDSketch implementation.
+
+Optimized for high throughput to match or exceed Datadog's implementation.
+"""
 
 from typing import Literal, Union
 from .mapping.logarithmic import LogarithmicMapping
@@ -7,6 +10,7 @@ from .mapping.cubic_interpolation import CubicInterpolationMapping
 from .storage.base import BucketManagementStrategy
 from .storage.contiguous import ContiguousStorage
 from .storage.sparse import SparseStorage
+
 
 class DDSketch:
     """
@@ -20,6 +24,9 @@ class DDSketch:
         "DDSketch: A Fast and Fully-Mergeable Quantile Sketch with Relative-Error Guarantees"
         by Charles Masson, Jee E. Rim and Homin K. Lee
     """
+    
+    __slots__ = ('relative_accuracy', 'cont_neg', 'mapping', 'positive_store',
+                 'negative_store', 'count', 'zero_count', '_min', '_max', '_sum')
     
     def __init__(
         self,
@@ -54,7 +61,6 @@ class DDSketch:
         self.relative_accuracy = relative_accuracy
         self.cont_neg = cont_neg
         
-        
         # Initialize mapping scheme
         if mapping_type == 'logarithmic':
             self.mapping = LogarithmicMapping(relative_accuracy)
@@ -71,31 +77,47 @@ class DDSketch:
             self.positive_store = SparseStorage(strategy=bucket_strategy)
             self.negative_store = SparseStorage(strategy=bucket_strategy) if cont_neg else None
             
-        self.count = 0
-        self.zero_count = 0
+        self.count = 0.0
+        self.zero_count = 0.0
+        
+        # Summary stats (like Datadog)
+        self._min = float('+inf')
+        self._max = float('-inf')
+        self._sum = 0.0
     
-    def insert(self, value: Union[int, float]) -> None:
+    def insert(self, value: Union[int, float], weight: float = 1.0) -> None:
         """
         Insert a value into the sketch.
         
         Args:
             value: The value to insert.
+            weight: The weight of the value (default 1.0).
             
         Raises:
             ValueError: If value is negative and cont_neg is False.
         """
         if value > 0:
-            bucket_idx = self.mapping.compute_bucket_index(value)
-            self.positive_store.add(bucket_idx)
+            self.positive_store.add(self.mapping.compute_bucket_index(value), weight)
         elif value < 0:
             if self.cont_neg:
-                bucket_idx = self.mapping.compute_bucket_index(-value)
-                self.negative_store.add(bucket_idx)
+                self.negative_store.add(self.mapping.compute_bucket_index(-value), weight)
             else:
                 raise ValueError("Negative values not supported when cont_neg is False")
         else:
-            self.zero_count += 1
-        self.count += 1
+            self.zero_count += weight
+        
+        # Track summary stats
+        self.count += weight
+        self._sum += value * weight
+        if value < self._min:
+            self._min = value
+        if value > self._max:
+            self._max = value
+    
+    # Alias for compatibility with Datadog's API
+    def add(self, value: Union[int, float], weight: float = 1.0) -> None:
+        """Alias for insert() to match Datadog's API."""
+        self.insert(value, weight)
     
     def delete(self, value: Union[int, float]) -> None:
         """
@@ -125,6 +147,7 @@ class DDSketch:
             
         if deleted:
             self.count -= 1
+            self._sum -= value
     
     def quantile(self, q: float) -> float:
         """
@@ -146,32 +169,52 @@ class DDSketch:
             
         rank = q * (self.count - 1)
         
-        if self.cont_neg:
-            neg_count = self.negative_store.total_count
+        if self.cont_neg and self.negative_store is not None:
+            neg_count = self.negative_store.count
             if rank < neg_count:
-                # Handle negative values
-                curr_count = 0
-                if self.negative_store.min_index is not None:
-                    for idx in range(self.negative_store.max_index, self.negative_store.min_index - 1, -1):
-                        bucket_count = self.negative_store.get_count(idx)
-                        curr_count += bucket_count
-                        if curr_count > rank:
-                            return -self.mapping.compute_value_from_index(idx)
+                # Handle negative values - use reversed rank
+                reversed_rank = neg_count - rank - 1
+                key = self.negative_store.key_at_rank(reversed_rank, lower=False)
+                return -self.mapping.compute_value_from_index(key)
             rank -= neg_count
             
         if rank < self.zero_count:
-            return 0
+            return 0.0
         rank -= self.zero_count
         
-        curr_count = 0
-        if self.positive_store.min_index is not None:
-            for idx in range(self.positive_store.min_index, self.positive_store.max_index + 1):
-                bucket_count = self.positive_store.get_count(idx)
-                curr_count += bucket_count
-                if curr_count > rank:
-                    return self.mapping.compute_value_from_index(idx)
-                
-        return float('inf')
+        # Use key_at_rank for consistency with storage implementation
+        key = self.positive_store.key_at_rank(rank)
+        return self.mapping.compute_value_from_index(key)
+    
+    # Alias for Datadog compatibility
+    def get_quantile_value(self, quantile: float) -> float:
+        """Alias for quantile() to match Datadog's API."""
+        try:
+            return self.quantile(quantile)
+        except ValueError:
+            return None
+    
+    @property
+    def avg(self) -> float:
+        """Return the exact average of values added to the sketch."""
+        if self.count == 0:
+            return 0.0
+        return self._sum / self.count
+    
+    @property
+    def sum(self) -> float:
+        """Return the exact sum of values added to the sketch."""
+        return self._sum
+    
+    @property
+    def min(self) -> float:
+        """Return the minimum value added to the sketch."""
+        return self._min
+    
+    @property
+    def max(self) -> float:
+        """Return the maximum value added to the sketch."""
+        return self._max
     
     def merge(self, other: 'DDSketch') -> None:
         """
@@ -185,12 +228,20 @@ class DDSketch:
         """
         if self.relative_accuracy != other.relative_accuracy:
             raise ValueError("Cannot merge sketches with different relative accuracies")
+        
+        if other.count == 0:
+            return
             
         self.positive_store.merge(other.positive_store)
-        if self.cont_neg and other.cont_neg:
+        if self.cont_neg and other.cont_neg and other.negative_store is not None:
             self.negative_store.merge(other.negative_store)
-        elif other.cont_neg and sum(other.negative_store.counts.values()) > 0:
+        elif other.cont_neg and other.negative_store is not None and other.negative_store.count > 0:
             raise ValueError("Cannot merge sketch containing negative values when cont_neg is False")
             
         self.zero_count += other.zero_count
-        self.count += other.count 
+        self.count += other.count
+        self._sum += other._sum
+        if other._min < self._min:
+            self._min = other._min
+        if other._max > self._max:
+            self._max = other._max

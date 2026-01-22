@@ -5,13 +5,25 @@ import logging
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
+from io import StringIO
 from .config import KAFKA_CONFIG
+
+# Add local QuantileFlow folder to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 # Import sketch algorithms from QuantileFlow
 from QuantileFlow.ddsketch import DDSketch as QuantileFlowDDSketch
 from QuantileFlow.hdrhistogram import HDRHistogram as QuantileFlowHDRHistogram
 from ddsketch import DDSketch as DatadogDDSketch
 from QuantileFlow.momentsketch import MomentSketch as QuantileFlowMomentSketch
+
+# Optional line profiler import
+try:
+    from line_profiler import LineProfiler
+    LINE_PROFILER_AVAILABLE = True
+except ImportError:
+    LINE_PROFILER_AVAILABLE = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +32,7 @@ def deserialize_message(msg):
     return json.loads(msg.decode('utf-8'))
 
 class LatencyMonitor:
-    def __init__(self, sketch_type='quantileflow', window_size=100, refresh_interval=0.0001, dd_accuracy=0.01, moment_count=10):
+    def __init__(self, sketch_type='quantileflow', window_size=100, refresh_interval=0.0001, dd_accuracy=0.01, moment_count=10, enable_line_profile=False, profile_output='line_profile_kafka.txt'):
         self.window_size = window_size
         self.running = True
         self.start_time = time.time()
@@ -28,6 +40,9 @@ class LatencyMonitor:
         self.refresh_interval = refresh_interval
         self.msg_count = 0
         self.sketch_type = sketch_type
+        self.enable_line_profile = enable_line_profile
+        self.profile_output = profile_output
+        self.line_profiler = None
         
         # Initialize the selected sketch for quantile computation
         if sketch_type == 'quantileflow':
@@ -46,6 +61,51 @@ class LatencyMonitor:
         else:
             raise ValueError(f"Unknown sketch type: {sketch_type}")
         
+        # Setup line profiler if enabled
+        if self.enable_line_profile:
+            if not LINE_PROFILER_AVAILABLE:
+                logger.error("line_profiler is not installed! Install with: pip install line_profiler")
+                self.enable_line_profile = False
+            else:
+                self._setup_line_profiler()
+        
+    def _setup_line_profiler(self):
+        """Setup line profiler for the sketch methods."""
+        logger.info(f"Setting up line profiler for {self.sketch_name}...")
+        self.line_profiler = LineProfiler()
+        
+        # Add sketch methods to profile based on sketch type
+        if self.sketch_type == 'quantileflow':
+            # Import modules for profiling
+            from QuantileFlow.ddsketch.core import DDSketch
+            from QuantileFlow.ddsketch.storage.contiguous import ContiguousStorage
+            from QuantileFlow.ddsketch.mapping.logarithmic import LogarithmicMapping
+            
+            self.line_profiler.add_function(DDSketch.insert)
+            self.line_profiler.add_function(DDSketch.quantile)
+            self.line_profiler.add_function(ContiguousStorage.add)
+            self.line_profiler.add_function(LogarithmicMapping.compute_bucket_index)
+            logger.info("Profiling: DDSketch.insert, DDSketch.quantile, ContiguousStorage.add, LogarithmicMapping.compute_bucket_index")
+            
+        elif self.sketch_type == 'momentsketch':
+            from QuantileFlow.momentsketch.core import MomentSketch
+            
+            self.line_profiler.add_function(MomentSketch.insert)
+            self.line_profiler.add_function(MomentSketch.quantile)
+            logger.info("Profiling: MomentSketch.insert, MomentSketch.quantile")
+            
+        elif self.sketch_type == 'hdrhistogram':
+            from QuantileFlow.hdrhistogram.core import HDRHistogram
+            
+            self.line_profiler.add_function(HDRHistogram.insert)
+            self.line_profiler.add_function(HDRHistogram.quantile)
+            logger.info("Profiling: HDRHistogram.insert, HDRHistogram.quantile")
+        
+        # Note: datadog DDSketch profiling would require profiling their library code
+        # which is not as useful for optimizing QuantileFlow
+        
+        logger.info("Line profiler setup complete. Profiling will be saved on shutdown.")
+    
     def _create_consumer(self):
         return KafkaConsumer(
             KAFKA_CONFIG['topic'],
@@ -64,6 +124,11 @@ class LatencyMonitor:
             signal.signal(signal.SIGTERM, self.shutdown)
             signal.signal(signal.SIGINT, self.shutdown)
             
+            # Enable line profiler if configured
+            if self.enable_line_profile and self.line_profiler:
+                logger.info("Enabling line profiler...")
+                self.line_profiler.enable()
+            
             while self.running:
                 records = consumer.poll(timeout_ms=3000)
                 for tp, messages in records.items():
@@ -72,6 +137,12 @@ class LatencyMonitor:
         except Exception as e:
             logger.error(f"Consumer error: {e}")
         finally:
+            # Disable and save profiler results
+            if self.enable_line_profile and self.line_profiler:
+                logger.info("Disabling line profiler and saving results...")
+                self.line_profiler.disable()
+                self._save_profile_results()
+            
             consumer.close()
 
     def calculate_stats(self):
@@ -169,6 +240,48 @@ class LatencyMonitor:
         sys.stdout.write(f"\n{'='*80}\n")
         sys.stdout.flush()
 
+    def _save_profile_results(self):
+        """Save line profiler results to file."""
+        if not self.line_profiler:
+            return
+        
+        try:
+            # Get profiling results
+            string_buffer = StringIO()
+            self.line_profiler.print_stats(stream=string_buffer)
+            profile_output = string_buffer.getvalue()
+            
+            # Add header with metadata
+            header = f"""
+{'='*120}
+Line-by-Line Profiling Results - Kafka Metrics Streaming Benchmark
+{'='*120}
+Sketch Algorithm: {self.sketch_name}
+Messages Processed: {self.msg_count:,}
+Total Runtime: {time.time() - self.start_time:.2f} seconds
+Timestamp: {datetime.now().isoformat()}
+{'='*120}
+
+"""
+            
+            # Write to file
+            output_path = Path(self.profile_output)
+            output_path.write_text(header + profile_output)
+            
+            logger.info(f"✓ Line profile saved to: {output_path.absolute()}")
+            
+            # Also print summary to console
+            print("\n" + "="*120)
+            print(f"Line Profiling Summary - {self.sketch_name}")
+            print("="*120)
+            print(f"Messages processed: {self.msg_count:,}")
+            print(f"Total runtime: {time.time() - self.start_time:.2f} seconds")
+            print(f"Full results saved to: {output_path.absolute()}")
+            print("="*120 + "\n")
+            
+        except Exception as e:
+            logger.error(f"Error saving profile results: {e}")
+    
     def shutdown(self, signum, frame):
         logger.info("Shutting down consumer...")
         self.running = False

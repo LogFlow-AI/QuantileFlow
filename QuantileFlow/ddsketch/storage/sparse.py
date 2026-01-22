@@ -27,6 +27,21 @@ class SparseStorage(Storage):
         self.min_index = None  # Minimum bucket index seen
         self.max_index = None  # Maximum bucket index seen
     
+    @property
+    def count(self):
+        """Alias for total_count for API compatibility."""
+        return self.total_count
+    
+    @property
+    def min_key(self):
+        """Alias for min_index for API compatibility."""
+        return self.min_index
+    
+    @property
+    def max_key(self):
+        """Alias for max_index for API compatibility."""
+        return self.max_index
+    
     def add(self, bucket_index: int, count: int = 1):
         """
         Add count to bucket_index.
@@ -123,4 +138,27 @@ class SparseStorage(Storage):
         
         # Merge buckets
         self.counts[i1] += self.counts[i0]
-        del self.counts[i0] 
+        del self.counts[i0]
+    
+    def key_at_rank(self, rank, lower=True):
+        """
+        Return the key for the value at given rank.
+        
+        Args:
+            rank: The rank to find.
+            lower: If True, return key where running_count > rank.
+                   If False, return key where running_count >= rank + 1.
+        
+        Returns:
+            The key at the specified rank.
+        """
+        if not self.counts:
+            return 0
+        
+        running_ct = 0.0
+        for key in sorted(self.counts.keys()):
+            running_ct += self.counts[key]
+            if (lower and running_ct > rank) or (not lower and running_ct >= rank + 1):
+                return key
+        
+        return self.max_index if self.max_index is not None else 0 
