@@ -6,7 +6,7 @@ and adopting Datadog's chunk-based dynamic growth pattern.
 
 import math
 import warnings
-from .base import Storage, BucketManagementStrategy
+from .base import Storage
 
 
 # Chunk size for dynamic growth (matches Datadog's default)
