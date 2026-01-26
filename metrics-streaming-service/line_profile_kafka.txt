@@ -1,0 +1,121 @@
+
+========================================================================================================================
+Line-by-Line Profiling Results - Kafka Metrics Streaming Benchmark
+========================================================================================================================
+Sketch Algorithm: QuantileFlow DDSketch
+Messages Processed: 872,161
+Total Runtime: 2091.55 seconds
+Timestamp: 2026-01-21T22:31:52.067860
+========================================================================================================================
+
+Timer unit: 1e-09 s
+
+Total time: 15.3584 s
+File: /home/taira/Code/QuantileFlow/QuantileFlow/ddsketch/core.py
+Function: DDSketch.insert at line 88
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    88                                               def insert(self, value: Union[int, float], weight: float = 1.0) -> None:
+    89                                                   """
+    90                                                   Insert a value into the sketch.
+    91                                                   
+    92                                                   Args:
+    93                                                       value: The value to insert.
+    94                                                       weight: The weight of the value (default 1.0).
+    95                                                       
+    96                                                   Raises:
+    97                                                       ValueError: If value is negative and cont_neg is False.
+    98                                                   """
+    99    872161  816360452.0    936.0      5.3          if value > 0:
+   100    867922     1.17e+10  13455.3     76.0              self.positive_store.add(self.mapping.compute_bucket_index(value), weight)
+   101      4239    3014973.0    711.2      0.0          elif value < 0:
+   102                                                       if self.cont_neg:
+   103                                                           self.negative_store.add(self.mapping.compute_bucket_index(-value), weight)
+   104                                                       else:
+   105                                                           raise ValueError("Negative values not supported when cont_neg is False")
+   106                                                   else:
+   107      4239    3109202.0    733.5      0.0              self.zero_count += weight
+   108                                                   
+   109                                                   # Track summary stats
+   110    872161  348912595.0    400.1      2.3          self.count += weight
+   111    872161 1080794776.0   1239.2      7.0          self._sum += value * weight
+   112    872161  489626681.0    561.4      3.2          if value < self._min:
+   113         9       2982.0    331.3      0.0              self._min = value
+   114    872161  938384938.0   1075.9      6.1          if value > self._max:
+   115         9       6437.0    715.2      0.0              self._max = value
+
+Total time: 1404.78 s
+File: /home/taira/Code/QuantileFlow/QuantileFlow/ddsketch/core.py
+Function: DDSketch.quantile at line 152
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   152                                               def quantile(self, q: float) -> float:
+   153                                                   """
+   154                                                   Compute the approximate quantile.
+   155                                                   
+   156                                                   Args:
+   157                                                       q: The desired quantile (between 0 and 1).
+   158                                                       
+   159                                                   Returns:
+   160                                                       The approximate value at the specified quantile.
+   161                                                       
+   162                                                   Raises:
+   163                                                       ValueError: If q is not between 0 and 1 or if the sketch is empty.
+   164                                                   """
+   165   2616483 2277023243.0    870.3      0.2          if not 0 <= q <= 1:
+   166                                                       raise ValueError("Quantile must be between 0 and 1")
+   167   2616483 1371491141.0    524.2      0.1          if self.count == 0:
+   168                                                       raise ValueError("Cannot compute quantile of empty sketch")
+   169                                                       
+   170   2616483 1518291210.0    580.3      0.1          rank = q * (self.count - 1)
+   171                                                   
+   172   2616483 1273997484.0    486.9      0.1          if self.cont_neg and self.negative_store is not None:
+   173   2616483 1054785649.0    403.1      0.1              neg_count = self.negative_store.count
+   174   2616483 1143741956.0    437.1      0.1              if rank < neg_count:
+   175                                                           # Handle negative values - use reversed rank
+   176                                                           reversed_rank = neg_count - rank - 1
+   177                                                           key = self.negative_store.key_at_rank(reversed_rank, lower=False)
+   178                                                           return -self.mapping.compute_value_from_index(key)
+   179   2616483 1138537472.0    435.1      0.1              rank -= neg_count
+   180                                                       
+   181   2616483 1081722072.0    413.4      0.1          if rank < self.zero_count:
+   182                                                       return 0.0
+   183   2616483  923188783.0    352.8      0.1          rank -= self.zero_count
+   184                                                   
+   185                                                   # Use key_at_rank for consistency with storage implementation
+   186   2616483     1.38e+12 528555.5     98.4          key = self.positive_store.key_at_rank(rank)
+   187   2616483        1e+10   3836.4      0.7          return self.mapping.compute_value_from_index(key)
+
+Total time: 2.48174 s
+File: /home/taira/Code/QuantileFlow/QuantileFlow/ddsketch/mapping/logarithmic.py
+Function: LogarithmicMapping.compute_bucket_index at line 29
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    29                                               def compute_bucket_index(self, value: float) -> int:
+    30                                                   """Compute the bucket index for a given value.
+    31                                                   
+    32                                                   ceil(log_gamma(value)) = ceil(log(value) / log(gamma))
+    33                                                   """
+    34    867922 2481735173.0   2859.4    100.0          return math.ceil(math.log(value) * self.multiplier)
+
+Total time: 4.76142 s
+File: /home/taira/Code/QuantileFlow/QuantileFlow/ddsketch/storage/contiguous.py
+Function: ContiguousStorage.add at line 110
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   110                                               def add(self, key, weight=1.0):
+   111                                                   """
+   112                                                   Add weight to the bin at key.
+   113                                                   
+   114                                                   Args:
+   115                                                       key: The bucket index to add to.
+   116                                                       weight: The weight to add (default 1.0).
+   117                                                   """
+   118    867922 3367877436.0   3880.4     70.7          idx = self._get_index(key)
+   119    867922  659017479.0    759.3     13.8          self.bins[idx] += weight
+   120    867922  734526582.0    846.3     15.4          self.count += weight
+

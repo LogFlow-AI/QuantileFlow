@@ -2,7 +2,12 @@ from kafka import KafkaProducer
 import pandas as pd
 import json
 import logging
+import sys
+from pathlib import Path
 from .config import KAFKA_CONFIG
+
+# Add local QuantileFlow folder to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

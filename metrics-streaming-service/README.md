@@ -74,7 +74,76 @@ python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --sketch
 | `momentsketch` | QuantileFlow MomentSketch | Moment-based quantile estimation |
 | `hdrhistogram` | QuantileFlow HDRHistogram | High Dynamic Range Histogram |
 
-### 5. Monitor & Observe
+### 5. Line-by-Line Profiling
+
+For performance optimization, you can enable **line-by-line profiling** of the sketch operations during the actual Kafka benchmark. This provides detailed per-line runtime analysis on the real HDFS dataset.
+
+**Prerequisites:**
+```bash
+pip install line_profiler
+```
+
+**Basic Usage:**
+```bash
+# Enable line profiling with default settings
+python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --line-profile
+
+# Profile different sketch implementations
+python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --sketch quantileflow --line-profile
+
+python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --sketch momentsketch --line-profile
+
+# Specify custom output file
+python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --line-profile --profile-output results/ddsketch_profile.txt
+```
+
+**What Gets Profiled:**
+
+The profiler tracks execution time for every line in the following critical functions:
+
+| Sketch Type | Profiled Functions |
+|-------------|-------------------|
+| `quantileflow` | `DDSketch.insert`, `DDSketch.quantile`, `ContiguousStorage.add`, `LogarithmicMapping.compute_bucket_index` |
+| `momentsketch` | `MomentSketch.insert`, `MomentSketch.quantile` |
+| `hdrhistogram` | `HDRHistogram.insert`, `HDRHistogram.quantile` |
+
+**Output:**
+
+The profiling results are saved to a file (default: `line_profile_kafka.txt`) and include:
+- Total runtime for each line of code
+- Number of times each line was executed (hits)
+- Percentage of time spent in each line
+- Time per execution
+
+**Example Output:**
+```
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    45    575061     12345678     21.5     15.2      bucket_idx = int(math.floor(self.gamma * math.log(value) + self.offset))
+    46    575061      8234567     14.3     10.1      self.positive_counts.add(bucket_idx)
+```
+
+**Profiling Workflow:**
+
+1. **Baseline profiling** - Profile with random data:
+   ```bash
+   cd /home/taira/Code/QuantileFlow
+   python profile_ddsketch.py --line-profile --num-values 1000000 --num-trials 3
+   ```
+
+2. **Real-world profiling** - Profile with HDFS dataset via Kafka:
+   ```bash
+   cd /home/taira/Code/QuantileFlow/metrics-streaming-service
+   python ./src/main.py --csv ./data/HDFS_v1/preprocessed/Event_traces.csv --line-profile
+   ```
+
+3. **Compare results** - Analyze differences between synthetic and real-world performance
+
+4. **Optimize** - Focus on lines with highest `% Time` and `Time` values
+
+5. **Verify** - Re-run profiling after optimizations to measure improvements
+
+### 6. Monitor & Observe
 
 ```bash
 # Terminal 2: Monitor consumer group
@@ -86,7 +155,7 @@ watch -n 1 kafka-run-class kafka.tools.GetOffsetShell \
   --broker-list localhost:9092 --topic latency-metrics
 ```
 
-### 6. Stopping Kafka
+### 7. Stopping Kafka
 
 ```bash
 # Stop Kafka server

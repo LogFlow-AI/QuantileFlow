@@ -1,10 +1,5 @@
 """
-This file contains a Python implementation of the cubic interpolation mapping algorithm 
-described in Datadog's Java DDSketch implementation (https://github.com/DataDog/sketches-java).
-
-Original work Copyright 2021 Datadog, Inc.
-Licensed under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-
+Cubic interpolation mapping scheme for DDSketch.
 
 This implementation approximates the memory-optimal logarithmic mapping by:
 1. Extracting the floor value of log2 from binary representation
@@ -34,8 +29,7 @@ class CubicInterpolationMapping(MappingScheme):
         
         # Multiplier m = 7/(10*log(2)) ≈ 1.01
         # This gives us the minimum multiplier that maintains relative accuracy guarantee
-        # Divide by C as per Datadog's implementation
-        self.m = 1/ (self.C * math.log(2))
+        self.m = 1 / (self.C * math.log(2))
         
     def _extract_exponent_and_significand(self, value: float) -> tuple[int, float]:
         """
@@ -55,7 +49,7 @@ class CubicInterpolationMapping(MappingScheme):
         Compute the cubic interpolation P(s) = As³ + Bs² + Cs
         where s is the normalized significand in [0, 1).
         """
-        # Use Datadog's order of operations for better numerical stability
+        # Use Horner's method for better numerical stability
         return s * (self.C + s * (self.B + s * self.A))
         
     def compute_bucket_index(self, value: float) -> int:

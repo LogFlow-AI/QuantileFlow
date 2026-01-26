@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-01-19T18:07:06.343610",
+  "name": "optimized_offset_inline",
+  "metadata": {
+    "num_values": 10000000,
+    "num_trials": 3,
+    "timestamp": "2026-01-19T18:07:06.343600"
+  },
+  "stats": [
+    {
+      "function": "profile_ddsketch.py:26(run_sketch_operations)",
+      "ncalls": 1,
+      "tottime": 2.106967754333333,
+      "cumtime": 12.268609562,
+      "percall_tot": 2.106967754333333,
+      "percall_cum": 12.268609562
+    },
+    {
+      "function": "core.py:97(insert)",
+      "ncalls": 10000000,
+      "tottime": 8.299598266666667,
+      "cumtime": 10.160096177,
+      "percall_tot": 8.299598266666668e-07,
+      "percall_cum": 1.0160096177000002e-06
+    },
+    {
+      "function": "~:0(<built-in method math.log>)",
+      "ncalls": 10000000,
+      "tottime": 0.9981760419999999,
+      "cumtime": 0.9981760419999999,
+      "percall_tot": 9.98176042e-08,
+      "percall_cum": 9.98176042e-08
+    },
+    {
+      "function": "~:0(<built-in method math.ceil>)",
+      "ncalls": 10000000,
+      "tottime": 0.8620358106666668,
+      "cumtime": 0.8620358106666668,
+      "percall_tot": 8.620358106666668e-08,
+      "percall_cum": 8.620358106666668e-08
+    },
+    {
+      "function": "core.py:168(quantile)",
+      "ncalls": 4,
+      "tottime": 0.0007727616666666667,
+      "cumtime": 0.0015440526666666667,
+      "percall_tot": 0.00019319041666666668,
+      "percall_cum": 0.0003860131666666667
+    },
+    {
+      "function": "contiguous.py:216(get_count)",
+      "ncalls": 3344,
+      "tottime": 0.0007546813333333334,
+      "cumtime": 0.0007546813333333334,
+      "percall_tot": 2.2605956897592843e-07,
+      "percall_cum": 2.2605956897592843e-07
+    },
+    {
+      "function": "contiguous.py:64(_add_with_expansion)",
+      "ncalls": 21,
+      "tottime": 0.0002860576666666667,
+      "cumtime": 0.0002860576666666667,
+      "percall_tot": 1.317209009661836e-05,
+      "percall_cum": 1.317209009661836e-05
+    },
+    {
+      "function": "~:0(<method 'disable' of '_lsprof.Profiler' objects>)",
+      "ncalls": 1,
+      "tottime": 3.222e-05,
+      "cumtime": 3.222e-05,
+      "percall_tot": 3.222e-05,
+      "percall_cum": 3.222e-05
+    },
+    {
+      "function": "logarithmic.py:18(compute_value_from_index)",
+      "ncalls": 4,
+      "tottime": 1.3633333333333336e-05,
+      "cumtime": 1.6609666666666668e-05,
+      "percall_tot": 3.408333333333334e-06,
+      "percall_cum": 4.152416666666667e-06
+    },
+    {
+      "function": "~:0(<built-in method math.pow>)",
+      "ncalls": 4,
+      "tottime": 2.9763333333333336e-06,
+      "cumtime": 2.9763333333333336e-06,
+      "percall_tot": 7.440833333333334e-07,
+      "percall_cum": 7.440833333333334e-07
+    },
+    {
+      "function": "~:0(<built-in method builtins.len>)",
+      "ncalls": 1,
+      "tottime": 1.5780000000000002e-06,
+      "cumtime": 1.5780000000000002e-06,
+      "percall_tot": 1.5780000000000002e-06,
+      "percall_cum": 1.5780000000000002e-06
+    }
+  ]
+}
