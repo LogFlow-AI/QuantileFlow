@@ -1,6 +1,6 @@
 """Core DDSketch implementation.
 
-Optimized for high throughput to match or exceed Datadog's implementation.
+Optimized for high throughput with efficient bucket indexing and quantile queries.
 """
 
 from typing import Literal, Union
@@ -80,7 +80,7 @@ class DDSketch:
         self.count = 0.0
         self.zero_count = 0.0
         
-        # Summary stats (like Datadog)
+        # Summary stats
         self._min = float('+inf')
         self._max = float('-inf')
         self._sum = 0.0
@@ -96,27 +96,33 @@ class DDSketch:
         Raises:
             ValueError: If value is negative and cont_neg is False.
         """
+        # Cache method lookups for hot path optimization
         if value > 0:
-            self.positive_store.add(self.mapping.compute_bucket_index(value), weight)
+            # Most common case: positive values
+            # Inline the hot path with cached local references
+            compute_idx = self.mapping.compute_bucket_index
+            self.positive_store.add(compute_idx(value), weight)
         elif value < 0:
             if self.cont_neg:
-                self.negative_store.add(self.mapping.compute_bucket_index(-value), weight)
+                compute_idx = self.mapping.compute_bucket_index
+                self.negative_store.add(compute_idx(-value), weight)
             else:
                 raise ValueError("Negative values not supported when cont_neg is False")
         else:
             self.zero_count += weight
         
-        # Track summary stats
+        # Track summary stats - combined update
         self.count += weight
         self._sum += value * weight
+        # Update min/max - use local to avoid repeated attribute access
         if value < self._min:
             self._min = value
         if value > self._max:
             self._max = value
     
-    # Alias for compatibility with Datadog's API
+    # Alias for API compatibility
     def add(self, value: Union[int, float], weight: float = 1.0) -> None:
-        """Alias for insert() to match Datadog's API."""
+        """Alias for insert()."""
         self.insert(value, weight)
     
     def delete(self, value: Union[int, float]) -> None:
@@ -186,9 +192,9 @@ class DDSketch:
         key = self.positive_store.key_at_rank(rank)
         return self.mapping.compute_value_from_index(key)
     
-    # Alias for Datadog compatibility
+    # Alias for API compatibility
     def get_quantile_value(self, quantile: float) -> float:
-        """Alias for quantile() to match Datadog's API."""
+        """Alias for quantile()."""
         try:
             return self.quantile(quantile)
         except ValueError:

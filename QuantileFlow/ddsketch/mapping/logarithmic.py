@@ -19,11 +19,11 @@ class LogarithmicMapping(MappingScheme):
         self.multiplier = 1 / math.log(self.gamma)
     
     def key(self, value: float) -> int:
-        """Alias for compute_bucket_index for Datadog API compatibility."""
+        """Alias for compute_bucket_index for API compatibility."""
         return self.compute_bucket_index(value)
     
     def value(self, key: int) -> float:
-        """Alias for compute_value_from_index for Datadog API compatibility."""
+        """Alias for compute_value_from_index for API compatibility."""
         return self.compute_value_from_index(key)
         
     def compute_bucket_index(self, value: float) -> int:

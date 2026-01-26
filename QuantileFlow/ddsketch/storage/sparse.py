@@ -1,6 +1,6 @@
 """Sparse storage implementation for DDSketch using dictionary."""
 
-from typing import Dict
+from typing import Dict, List
 from .base import Storage, BucketManagementStrategy
 
 class SparseStorage(Storage):
@@ -26,6 +26,10 @@ class SparseStorage(Storage):
         self.counts: Dict[int, int] = {}
         self.min_index = None  # Minimum bucket index seen
         self.max_index = None  # Maximum bucket index seen
+        # Cached sorted keys and cumulative sums for O(log n) quantile queries
+        self._sorted_keys: List[int] = []
+        self._cumulative_sums: List[float] = []
+        self._cache_valid: bool = False
     
     @property
     def count(self):
@@ -55,6 +59,7 @@ class SparseStorage(Storage):
             
         self.counts[bucket_index] = self.counts.get(bucket_index, 0) + count
         self.total_count += count
+        self._cache_valid = False
         
         # Update min and max indices
         if self.min_index is None or bucket_index < self.min_index:
@@ -85,6 +90,7 @@ class SparseStorage(Storage):
             
         self.counts[bucket_index] = max(0, self.counts[bucket_index] - count)
         self.total_count = max(0, self.total_count - count)
+        self._cache_valid = False
         
         if self.counts[bucket_index] == 0:
             del self.counts[bucket_index]
@@ -139,10 +145,29 @@ class SparseStorage(Storage):
         # Merge buckets
         self.counts[i1] += self.counts[i0]
         del self.counts[i0]
+        self._cache_valid = False
+    
+    def _rebuild_cache(self):
+        """Rebuild sorted keys and cumulative sums for O(log n) rank queries."""
+        if not self.counts:
+            self._sorted_keys = []
+            self._cumulative_sums = []
+        else:
+            self._sorted_keys = sorted(self.counts.keys())
+            # Build cumulative sums
+            cumsum = []
+            running = 0.0
+            for key in self._sorted_keys:
+                running += self.counts[key]
+                cumsum.append(running)
+            self._cumulative_sums = cumsum
+        self._cache_valid = True
     
     def key_at_rank(self, rank, lower=True):
         """
         Return the key for the value at given rank.
+        
+        Uses cached sorted keys and binary search for O(log n) performance.
         
         Args:
             rank: The rank to find.
@@ -155,10 +180,35 @@ class SparseStorage(Storage):
         if not self.counts:
             return 0
         
-        running_ct = 0.0
-        for key in sorted(self.counts.keys()):
-            running_ct += self.counts[key]
-            if (lower and running_ct > rank) or (not lower and running_ct >= rank + 1):
-                return key
+        if not self._cache_valid:
+            self._rebuild_cache()
         
-        return self.max_index if self.max_index is not None else 0 
+        cumsum = self._cumulative_sums
+        n = len(cumsum)
+        if n == 0:
+            return self.max_index if self.max_index is not None else 0
+        
+        # Use binary search for O(log n) lookup
+        lo, hi = 0, n
+        if lower:
+            # Find first index where cumsum[i] > rank
+            while lo < hi:
+                mid = (lo + hi) >> 1
+                if cumsum[mid] > rank:
+                    hi = mid
+                else:
+                    lo = mid + 1
+        else:
+            # Find first index where cumsum[i] >= rank + 1
+            target = rank + 1
+            while lo < hi:
+                mid = (lo + hi) >> 1
+                if cumsum[mid] >= target:
+                    hi = mid
+                else:
+                    lo = mid + 1
+        
+        if lo < len(self._sorted_keys):
+            return self._sorted_keys[lo]
+        
+        return self.max_index if self.max_index is not None else 0

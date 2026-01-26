@@ -1,7 +1,7 @@
 """Contiguous array storage implementation for DDSketch using offset-based indexing.
 
 Optimized for high throughput by using Python lists instead of numpy arrays
-and adopting Datadog's chunk-based dynamic growth pattern.
+and chunk-based dynamic growth pattern.
 """
 
 import math
@@ -9,7 +9,7 @@ import warnings
 from .base import Storage
 
 
-# Chunk size for dynamic growth (matches Datadog's default)
+# Chunk size for dynamic growth
 CHUNK_SIZE = 128
 
 
@@ -32,7 +32,8 @@ class ContiguousStorage(Storage):
 
     __slots__ = ('count', 'bins', 'min_key', 'max_key', 
                  'offset', 'collapse_count', 'bin_limit', 
-                 'chunk_size', 'is_collapsed')
+                 'chunk_size', 'is_collapsed',
+                 '_cumulative_sums', '_cumulative_valid')
     
     def __init__(self, bin_limit: int = 2048, chunk_size: int = CHUNK_SIZE, max_buckets: int = None):
         """
@@ -51,7 +52,7 @@ class ContiguousStorage(Storage):
             raise ValueError("bin_limit must be positive for ContiguousStorage")
         
         # Don't call super().__init__ to avoid overhead - inline what we need
-        self.count = 0.0  # Use float like Datadog for weighted values
+        self.count = 0.0  # Use float for weighted values
         self.bins = []  # Start empty, grow dynamically
         self.bin_limit = bin_limit
         self.chunk_size = chunk_size
@@ -60,6 +61,9 @@ class ContiguousStorage(Storage):
         self.offset = 0
         self.collapse_count = 0
         self.is_collapsed = False
+        # Lazy cumulative sums for O(log n) quantile queries
+        self._cumulative_sums = []
+        self._cumulative_valid = False
     
     @property
     def total_count(self):
@@ -118,19 +122,29 @@ class ContiguousStorage(Storage):
         idx = self._get_index(key)
         self.bins[idx] += weight
         self.count += weight
+        self._cumulative_valid = False
     
     def _get_index(self, key):
-        """Calculate the bin index for the key, extending the range if necessary."""
-        if self.min_key is None:
+        """Calculate the bin index for the key, extending the range if necessary.
+        
+        Optimized for the common case where key is within the existing range.
+        """
+        # Fast path: key is within existing range (most common case)
+        min_key = self.min_key
+        if min_key is not None and min_key <= key <= self.max_key:
+            return key - self.offset
+        
+        # Slow path: need to extend range or handle edge cases
+        if min_key is None:
             # First insertion
             self._extend_range(key)
-        elif key < self.min_key:
+        elif key < min_key:
             if self.is_collapsed:
                 return 0
             self._extend_range(key)
             if self.is_collapsed:
                 return 0
-        elif key > self.max_key:
+        else:  # key > self.max_key
             self._extend_range(key)
         
         return key - self.offset
@@ -241,6 +255,7 @@ class ContiguousStorage(Storage):
             
             self.bins[pos] = max(0, old_count - count)
             self.count = max(0, self.count - count)
+            self._cumulative_valid = False
             
             # Update min/max keys if we emptied a boundary bucket
             if old_count > 0 and self.bins[pos] == 0:
@@ -282,11 +297,27 @@ class ContiguousStorage(Storage):
             return 0
         return int(self.bins[pos])
     
+    def _rebuild_cumulative_sums(self):
+        """Rebuild cumulative sums array for O(log n) rank queries."""
+        bins = self.bins
+        n = len(bins)
+        if n == 0:
+            self._cumulative_sums = []
+        else:
+            # Build cumulative sums
+            cumsum = [0.0] * n
+            running = 0.0
+            for i in range(n):
+                running += bins[i]
+                cumsum[i] = running
+            self._cumulative_sums = cumsum
+        self._cumulative_valid = True
+    
     def key_at_rank(self, rank, lower=True):
         """
         Return the key for the value at given rank.
         
-        This method is compatible with Datadog's interface.
+        Uses lazy cumulative sums and binary search for O(log n) performance.
         
         Args:
             rank: The rank to find.
@@ -296,11 +327,37 @@ class ContiguousStorage(Storage):
         Returns:
             The key at the specified rank.
         """
-        running_ct = 0.0
-        for i, bin_ct in enumerate(self.bins):
-            running_ct += bin_ct
-            if (lower and running_ct > rank) or (not lower and running_ct >= rank + 1):
-                return i + self.offset
+        if not self._cumulative_valid:
+            self._rebuild_cumulative_sums()
+        
+        cumsum = self._cumulative_sums
+        n = len(cumsum)
+        if n == 0:
+            return self.max_key if self.max_key is not None else 0
+        
+        # Use binary search for O(log n) lookup
+        # Binary search to find first index where condition is true
+        lo, hi = 0, n
+        if lower:
+            # Find first index where cumsum[i] > rank
+            while lo < hi:
+                mid = (lo + hi) >> 1
+                if cumsum[mid] > rank:
+                    hi = mid
+                else:
+                    lo = mid + 1
+        else:
+            # Find first index where cumsum[i] >= rank + 1
+            target = rank + 1
+            while lo < hi:
+                mid = (lo + hi) >> 1
+                if cumsum[mid] >= target:
+                    hi = mid
+                else:
+                    lo = mid + 1
+        
+        if lo < n:
+            return lo + self.offset
         
         return self.max_key if self.max_key is not None else 0
     
@@ -329,6 +386,7 @@ class ContiguousStorage(Storage):
                     self.bins[self_idx] += other.bins[other_idx]
         
         self.count += other.count
+        self._cumulative_valid = False
     
     def copy(self, store: 'ContiguousStorage'):
         """Copy another storage into this one."""
@@ -339,3 +397,4 @@ class ContiguousStorage(Storage):
         self.offset = store.offset
         self.is_collapsed = store.is_collapsed
         self.collapse_count = store.collapse_count
+        self._cumulative_valid = False
